@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OutcomeService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sportsbetting-settlement-service</a> &gt; <a href="index.source.html" class="el_package">com.sportsbetting.settlement.domain.outcome.service</a> &gt; <span class="el_source">OutcomeService.java</span></div><h1>OutcomeService.java</h1><pre class="source lang-java linenums">package com.sportsbetting.settlement.domain.outcome.service;
+
+import com.sportsbetting.settlement.domain.outcome.api.EventOutcome;
+import com.sportsbetting.settlement.domain.bet.model.Bet;
+import com.sportsbetting.settlement.domain.bet.model.BetStatus;
+import com.sportsbetting.settlement.domain.outcome.model.RecordedOutcome;
+import com.sportsbetting.settlement.domain.settlement.model.SettlementOutbox;
+import com.sportsbetting.settlement.domain.bet.repository.BetRepository;
+import com.sportsbetting.settlement.domain.outcome.repository.OutcomeRepository;
+import com.sportsbetting.settlement.domain.settlement.repository.OutboxRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+
+@Service
+@RequiredArgsConstructor
+<span class="fc" id="L19">@Slf4j</span>
+public class OutcomeService {
+    private final EventLockService eventLockService;
+    private final OutcomeRepository outcomeRepository;
+    private final BetRepository betRepository;
+    private final OutboxRepository outboxRepository;
+
+    @Transactional
+    public void handle(EventOutcome outcome) {
+<span class="fc" id="L28">        eventLockService.acquire(outcome.eventId());</span>
+<span class="fc" id="L29">        var existing = outcomeRepository.findById(outcome.eventId());</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">        if (existing.isPresent()) {</span>
+<span class="fc bfc" id="L31" title="All 2 branches covered.">            if (!existing.get().getEventWinnerId().equals(outcome.eventWinnerId())) {</span>
+<span class="fc" id="L32">                throw new IllegalArgumentException(&quot;Conflicting winner for event &quot; + outcome.eventId());</span>
+            }
+<span class="fc" id="L34">            log.info(&quot;Duplicate outcome resumed eventId={}&quot;, outcome.eventId());</span>
+        } else {
+<span class="fc" id="L36">            outcomeRepository.save(new RecordedOutcome(outcome));</span>
+        }
+<span class="fc" id="L38">        match(outcome.eventId(), outcome.eventWinnerId());</span>
+<span class="fc" id="L39">    }</span>
+
+    @Transactional
+    public void matchBatch(String eventId) {
+<span class="fc" id="L43">        eventLockService.acquire(eventId);</span>
+<span class="fc" id="L44">        var outcome = outcomeRepository.findById(eventId).orElseThrow();</span>
+<span class="fc" id="L45">        match(eventId, outcome.getEventWinnerId());</span>
+<span class="fc" id="L46">    }</span>
+
+    private void match(String eventId, String winnerId) {
+<span class="fc" id="L49">        var matches = betRepository.findByEventIdAndStatus(eventId, BetStatus.OPEN, PageRequest.of(0, 50));</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        for (Bet bet : matches) {</span>
+<span class="fc" id="L51">            bet.awaitSettlement();</span>
+<span class="fc" id="L52">            outboxRepository.save(new SettlementOutbox(bet.getBetId(), eventId, winnerId));</span>
+<span class="fc" id="L53">        }</span>
+<span class="fc" id="L54">        log.info(&quot;Outcome matching batch eventId={} matchedBets={}&quot;, eventId, matches.size());</span>
+<span class="fc" id="L55">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

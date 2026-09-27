@@ -1,0 +1,84 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.1'
+    id 'jacoco'
+}
+
+group = 'com.sportsbetting'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+tasks.withType(JavaCompile).configureEach { options.release = 21 }
+
+repositories { mavenCentral() }
+
+dependencies {
+    implementation platform('org.springframework.boot:spring-boot-dependencies:4.1.1')
+    implementation platform('io.grpc:grpc-bom:1.84.0')
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
+    implementation 'org.apache.rocketmq:rocketmq-client:5.5.1'
+    constraints {
+        ['tomcat-embed-core', 'tomcat-embed-el', 'tomcat-embed-websocket'].each { module ->
+            implementation("org.apache.tomcat.embed:${module}:11.0.26") {
+                because 'Apache Tomcat 11.0.26 contains the fixes for advisories affecting Boot 4.1.1 managed 11.0.24'
+            }
+        }
+        implementation('com.alibaba.fastjson2:fastjson2:2.0.65') {
+            because 'RocketMQ 5.5.1 pulls 2.0.63; 2.0.65 fixes an AutoType authorization bypass'
+        }
+        implementation('at.yawk.lz4:lz4-java:1.11.1') {
+            because 'Fixes the LZ4 advisory in the 1.10.x version pulled by Kafka and RocketMQ'
+        }
+    }
+    runtimeOnly 'com.h2database:h2'
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    implementation 'org.mapstruct:mapstruct:1.6.3'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    include '**/Test*.class'
+    exclude '**/Test*Integration.class'
+    finalizedBy jacocoTestReport
+}
+tasks.register('integrationTest', Test) {
+    description = 'Runs database concurrency and embedded Kafka integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    include '**/Test*Integration.class'
+    shouldRunAfter test
+}
+jacoco { toolVersion = '0.8.14' }
+jacocoTestReport {
+    dependsOn test
+    reports { xml.required = true; html.required = true; csv.required = true }
+}
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit { counter = 'LINE'; minimum = 1.0 }
+            limit { counter = 'BRANCH'; minimum = 1.0 }
+        }
+    }
+}
+check.dependsOn jacocoTestCoverageVerification
+check.dependsOn integrationTest
+bootJar { archiveFileName = 'sportsbetting-settlement-service.jar' }

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SettlementOutbox.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sportsbetting-settlement-service</a> &gt; <a href="index.source.html" class="el_package">com.sportsbetting.settlement.domain.settlement.model</a> &gt; <span class="el_source">SettlementOutbox.java</span></div><h1>SettlementOutbox.java</h1><pre class="source lang-java linenums">package com.sportsbetting.settlement.domain.settlement.model;
+
+import com.sportsbetting.settlement.domain.settlement.messaging.SettlementMessage;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Getter
+@Table(indexes = @Index(name = &quot;outbox_due_idx&quot;, columnList = &quot;sent,nextAttempt&quot;))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class SettlementOutbox {
+    @Id @NotBlank @Size(max = 100) @Column(length = 100) private String betId;
+    @NotBlank @Size(max = 100) @Column(nullable = false, length = 100) private String eventId;
+    @NotBlank @Size(max = 100) @Column(nullable = false, length = 100) private String eventWinnerId;
+    @Column(nullable = false) private boolean sent;
+    @Min(0) @Max(30) @Column(nullable = false) private int attempts;
+<span class="fc" id="L21">    @NotNull @Column(nullable = false) private Instant nextAttempt = Instant.EPOCH;</span>
+
+<span class="fc" id="L23">    public SettlementOutbox(String betId, String eventId, String winnerId) {</span>
+<span class="fc" id="L24">        this.betId = betId;</span>
+<span class="fc" id="L25">        this.eventId = eventId;</span>
+<span class="fc" id="L26">        this.eventWinnerId = winnerId;</span>
+<span class="fc" id="L27">    }</span>
+
+    public SettlementMessage message() {
+<span class="fc" id="L30">        return new SettlementMessage(betId, eventId, eventWinnerId);</span>
+    }
+
+<span class="fc" id="L33">    public void markSent() { sent = true; }</span>
+
+    public void retryLater(Instant now) {
+<span class="fc" id="L36">        attempts = Math.min(attempts + 1, 30);</span>
+<span class="fc" id="L37">        nextAttempt = now.plusSeconds(Math.min(1L &lt;&lt; attempts, 60));</span>
+<span class="fc" id="L38">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

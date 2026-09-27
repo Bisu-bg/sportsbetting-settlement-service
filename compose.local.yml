@@ -1,0 +1,5 @@
+# For a JVM running on the host: start only broker services (see README).
+services:
+  rocketmq:
+    environment:
+      BROKER_HOST: 127.0.0.1

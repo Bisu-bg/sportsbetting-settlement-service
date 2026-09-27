@@ -1,0 +1,24 @@
+# Gradle and generated output
+.gradle/
+.gradle-user-home/
+build/
+out/
+
+# IntelliJ local state
+.idea/
+*.iml
+
+# Local diagnostics and OS files
+*.log
+.DS_Store
+Thumbs.db
+
+# Local environment and private keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MessagingConfiguration.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sportsbetting-settlement-service</a> &gt; <a href="index.source.html" class="el_package">com.sportsbetting.settlement.config</a> &gt; <span class="el_source">MessagingConfiguration.java</span></div><h1>MessagingConfiguration.java</h1><pre class="source lang-java linenums">package com.sportsbetting.settlement.config;
+
+import com.sportsbetting.settlement.domain.settlement.messaging.SettlementListener;
+import java.time.Clock;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
+import org.apache.rocketmq.client.exception.MQClientException;
+import org.apache.rocketmq.client.producer.DefaultMQProducer;
+import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.*;
+import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.*;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.util.backoff.FixedBackOff;
+
+@Configuration
+@EnableScheduling
+@ConditionalOnProperty(name = &quot;app.messaging-enabled&quot;, havingValue = &quot;true&quot;, matchIfMissing = true)
+<span class="fc" id="L23">public class MessagingConfiguration {</span>
+    @Bean
+<span class="fc" id="L25">    public Clock clock() { return Clock.systemUTC(); }</span>
+
+    @Bean
+    public NewTopic eventOutcomes() {
+<span class="fc" id="L29">        return TopicBuilder.name(&quot;event-outcomes&quot;).partitions(3).replicas(1).build();</span>
+    }
+
+    @Bean
+    public NewTopic deadLetterOutcomes() {
+<span class="fc" id="L34">        return TopicBuilder.name(&quot;event-outcomes.DLT&quot;).partitions(3).replicas(1).build();</span>
+    }
+
+    @Bean
+    public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate&lt;String, String&gt; template) {
+<span class="fc" id="L39">        var recoverer = new DeadLetterPublishingRecoverer(template,</span>
+<span class="fc" id="L40">                (record, failure) -&gt; new TopicPartition(&quot;event-outcomes.DLT&quot;, record.partition()));</span>
+        // A failed DLT send must not turn into an acknowledged/lost source record.
+<span class="fc" id="L42">        recoverer.setFailIfSendResultIsError(true);</span>
+<span class="fc" id="L43">        var handler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000, 3));</span>
+<span class="fc" id="L44">        handler.addNotRetryableExceptions(IllegalArgumentException.class);</span>
+<span class="fc" id="L45">        return handler;</span>
+    }
+
+    @Bean(initMethod = &quot;start&quot;, destroyMethod = &quot;shutdown&quot;)
+    public DefaultMQProducer rocketProducer(@Value(&quot;${app.rocketmq.nameserver}&quot;) String nameserver) {
+<span class="fc" id="L50">        var producer = new DefaultMQProducer(&quot;bet-settlement-producer&quot;);</span>
+<span class="fc" id="L51">        producer.setNamesrvAddr(nameserver);</span>
+<span class="fc" id="L52">        producer.setVipChannelEnabled(false);</span>
+<span class="fc" id="L53">        producer.setSendMsgTimeout(5000);</span>
+<span class="fc" id="L54">        producer.setRetryTimesWhenSendFailed(2);</span>
+<span class="fc" id="L55">        producer.setRetryAnotherBrokerWhenNotStoreOK(true);</span>
+<span class="fc" id="L56">        return producer;</span>
+    }
+
+    @Bean(initMethod = &quot;start&quot;, destroyMethod = &quot;shutdown&quot;)
+    public DefaultMQPushConsumer rocketConsumer(@Value(&quot;${app.rocketmq.nameserver}&quot;) String nameserver,
+                                               SettlementListener settlementListener) throws MQClientException {
+<span class="fc" id="L62">        var consumer = new DefaultMQPushConsumer(&quot;bet-settlement-consumer&quot;);</span>
+<span class="fc" id="L63">        consumer.setNamesrvAddr(nameserver);</span>
+<span class="fc" id="L64">        consumer.setVipChannelEnabled(false);</span>
+<span class="fc" id="L65">        consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);</span>
+<span class="fc" id="L66">        consumer.setConsumeMessageBatchMaxSize(1);</span>
+<span class="fc" id="L67">        consumer.setConsumeThreadMin(2);</span>
+<span class="fc" id="L68">        consumer.setConsumeThreadMax(4);</span>
+<span class="fc" id="L69">        consumer.setMaxReconsumeTimes(5);</span>
+<span class="fc" id="L70">        consumer.subscribe(&quot;bet-settlements&quot;, &quot;*&quot;);</span>
+<span class="fc" id="L71">        consumer.registerMessageListener(settlementListener);</span>
+<span class="fc" id="L72">        return consumer;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

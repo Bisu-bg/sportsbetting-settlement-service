@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: sportsbetting-settlement-service
+  datasource:
+    url: jdbc:h2:mem:bets;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000
+    username: sa
+    password: ''
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+  mvc:
+    problemdetails:
+      enabled: true
+  task:
+    scheduling:
+      pool:
+        size: 2
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+        max.block.ms: 5000
+    consumer:
+      group-id: outcome-settlement-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 20
+    listener:
+      ack-mode: record
+app:
+  rocketmq:
+    nameserver: ${ROCKETMQ_NAMESERVER:localhost:9876}
+springdoc:
+  paths-to-match: /api/**
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

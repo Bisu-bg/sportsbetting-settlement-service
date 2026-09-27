@@ -1,0 +1,19 @@
+FROM eclipse-temurin:21-jdk-jammy AS fetch
+RUN apt-get update && apt-get install -y --no-install-recommends curl unzip ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+ARG ROCKETMQ_VERSION=5.5.1
+ARG ROCKETMQ_SHA512=21555D9BD79792AC89F246566F19F58E300784C59B96289FD0C74DB14787861081FB60EBB95CF541BF20A3E508BF3B70FEB9596EA3BA6DC5DC88FA6081F00577
+RUN curl -fsSL --retry 3 "https://archive.apache.org/dist/rocketmq/${ROCKETMQ_VERSION}/rocketmq-all-${ROCKETMQ_VERSION}-bin-release.zip" -o /tmp/rocketmq.zip \
+    && echo "${ROCKETMQ_SHA512}  /tmp/rocketmq.zip" | sha512sum -c - \
+    && unzip -q /tmp/rocketmq.zip -d /tmp
+
+FROM eclipse-temurin:21-jre-jammy
+ARG ROCKETMQ_VERSION=5.5.1
+COPY --from=fetch /tmp/rocketmq-all-${ROCKETMQ_VERSION}-bin-release /opt/rocketmq
+ENV ROCKETMQ_HOME=/opt/rocketmq
+ENV PATH="/opt/rocketmq/bin:${PATH}"
+WORKDIR /opt/rocketmq
+RUN groupadd -r rocketmq && useradd -r -g rocketmq -d /opt/rocketmq rocketmq \
+    && mkdir -p /opt/rocketmq/store /opt/rocketmq/logs \
+    && chown -R rocketmq:rocketmq /opt/rocketmq
+USER rocketmq

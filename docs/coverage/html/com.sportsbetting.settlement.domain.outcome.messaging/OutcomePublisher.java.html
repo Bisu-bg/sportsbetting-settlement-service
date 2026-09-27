@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OutcomePublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sportsbetting-settlement-service</a> &gt; <a href="index.source.html" class="el_package">com.sportsbetting.settlement.domain.outcome.messaging</a> &gt; <span class="el_source">OutcomePublisher.java</span></div><h1>OutcomePublisher.java</h1><pre class="source lang-java linenums">package com.sportsbetting.settlement.domain.outcome.messaging;
+
+import com.sportsbetting.settlement.domain.outcome.api.EventOutcome;
+import com.sportsbetting.settlement.messaging.BrokerUnavailableException;
+import com.sportsbetting.settlement.messaging.JsonMessages;
+import java.util.concurrent.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+<span class="fc" id="L14">@Slf4j</span>
+public class OutcomePublisher {
+    private final KafkaTemplate&lt;String, String&gt; kafkaTemplate;
+    private final JsonMessages jsonMessages;
+
+    public void publish(EventOutcome outcome) {
+        try {
+<span class="fc" id="L21">            kafkaTemplate.send(&quot;event-outcomes&quot;, outcome.eventId(), jsonMessages.write(outcome)).get(10, TimeUnit.SECONDS);</span>
+<span class="fc" id="L22">            log.info(&quot;Outcome published eventId={}&quot;, outcome.eventId());</span>
+<span class="fc" id="L23">        } catch (InterruptedException ex) {</span>
+<span class="fc" id="L24">            Thread.currentThread().interrupt();</span>
+<span class="fc" id="L25">            throw new BrokerUnavailableException(ex);</span>
+<span class="fc" id="L26">        } catch (ExecutionException | TimeoutException | RuntimeException ex) {</span>
+<span class="fc" id="L27">            throw new BrokerUnavailableException(ex);</span>
+<span class="fc" id="L28">        }</span>
+<span class="fc" id="L29">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

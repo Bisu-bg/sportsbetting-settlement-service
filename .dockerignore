@@ -1,0 +1,8 @@
+*
+!Dockerfile
+!gradlew
+!gradle/**
+!build.gradle
+!settings.gradle
+!lombok.config
+!src/**
