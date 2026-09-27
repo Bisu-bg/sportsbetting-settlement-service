@@ -4,6 +4,7 @@ permissions:
   contents: read
 jobs:
   verify:
+    name: Build, tests and coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -22,6 +23,7 @@ jobs:
             build/reports/tests/integrationTest
             build/reports/jacoco/test
   broker-smoke:
+    name: Bet settlement, duplicate handling and broker recovery
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
